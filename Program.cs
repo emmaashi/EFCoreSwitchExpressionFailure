@@ -1,53 +1,29 @@
-﻿using System;
-using System.Linq;
+﻿using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
-using Microsoft.EntityFrameworkCore;
-using ConsoleApp1.Models;
 using ConsoleApp1;
+using ConsoleApp1.Models;
 
 using var context = new MyDbContext();
-
 await context.Database.EnsureDeletedAsync();
 await context.Database.EnsureCreatedAsync();
 
-context.Add(new Post
-{
-    Id = Guid.NewGuid(),
-    Title = "My Entertainment",
-    PostTypeId = PostTypeEnum.Entertainment
-});
-
+context.Posts.Add(new Post { Type = 1 });
 await context.SaveChangesAsync();
 
-Console.WriteLine("Attempting Expression.Switch...");
-
 var param = Expression.Parameter(typeof(Post), "p");
-var switchValue = Expression.Convert(Expression.Property(param, nameof(Post.PostTypeId)), typeof(PostTypeEnum?));
-
 var switchExpr = Expression.Switch(
     typeof(string),
-    switchValue,
+    Expression.Property(param, nameof(Post.Type)),
     Expression.Constant("Unknown"),
     null,
     new[]
     {
-        Expression.SwitchCase(Expression.Constant("Entertainment"), Expression.Constant(PostTypeEnum.Entertainment, typeof(PostTypeEnum?))),
-        Expression.SwitchCase(Expression.Constant("Informative"),   Expression.Constant(PostTypeEnum.Informative, typeof(PostTypeEnum?))),
+        Expression.SwitchCase(Expression.Constant("One"), Expression.Constant(1)),
+        Expression.SwitchCase(Expression.Constant("Two"), Expression.Constant(2))
     }
 );
-
 var lambda = Expression.Lambda<Func<Post, string>>(switchExpr, param);
 
-try
-{
-    var result = await context.Posts.Select(lambda).ToListAsync();
-    foreach (var r in result)
-    {
-        Console.WriteLine($"Result: {r}");
-    }
-}
-catch (Exception ex)
-{
-    Console.WriteLine("Error executing query:");
-    Console.WriteLine(ex);
-}
+var query = context.Posts.Select(lambda);
+
+var results = await query.ToListAsync();
